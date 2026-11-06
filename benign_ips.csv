@@ -1,0 +1,5 @@
+src_ip,description
+192.0.2.10,Simulated benign VPN user Alice
+192.0.2.11,Simulated benign VPN user Bob
+192.0.2.12,Simulated benign VPN user Charlie
+192.0.2.14,Simulated benign VPN user Eve
