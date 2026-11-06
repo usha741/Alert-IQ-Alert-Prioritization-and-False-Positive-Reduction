@@ -102,6 +102,7 @@ This is a beginner-level, rule-based SOC project using simulated authentication 
 This project is developed for educational and cybersecurity portfolio purposes. All included security events and IP addresses are simulated examples. No unauthorized systems are accessed or attacked.
 
 Author
+
 Usha
 
 Created as a hands-on SOC Analyst portfolio project using Splunk.
