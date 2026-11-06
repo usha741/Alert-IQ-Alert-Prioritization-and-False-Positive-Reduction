@@ -1,0 +1,192 @@
+<form version="1.1">
+  <label>Alert IQ - Intelligent SOC Monitoring</label>
+  <description>
+    Security alert prioritization, authentication monitoring,
+    brute-force detection and false-positive reduction.
+  </description>
+
+  <fieldset submitButton="false">
+    <input type="time" token="time_range">
+      <label>Time Range</label>
+      <default>
+        <earliest>0</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+
+  <row>
+    <panel>
+      <title>Total Security Events</title>
+      <single>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth"
+            | stats count AS total_events
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="underLabel">Authentication Events</option>
+      </single>
+    </panel>
+
+    <panel>
+      <title>Failed Login Attempts</title>
+      <single>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth" result="failure"
+            | stats count AS failed_logins
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="underLabel">Failed Logins</option>
+      </single>
+    </panel>
+
+    <panel>
+      <title>Successful Logins</title>
+      <single>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth" result="success"
+            | stats count AS successful_logins
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="underLabel">Successful Logins</option>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Brute Force Detection</title>
+      <table>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth" result="failure"
+            | bin _time span=5m
+            | stats count AS failures BY _time src_ip user
+            | where failures>=5
+            | eval severity="High"
+            | table _time src_ip user failures severity
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+      </table>
+    </panel>
+
+    <panel>
+      <title>Suspicious Login Sequences</title>
+      <table>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth"
+            | stats count(eval(result="failure")) AS failures
+              count(eval(result="success")) AS successes BY src_ip user
+            | where failures>=3 AND successes>0
+            | table src_ip user failures successes
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Risk Score and Severity</title>
+      <table>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth"
+            | stats count(eval(result="failure")) AS failures
+              count(eval(result="success")) AS successes BY src_ip
+            | eval risk_score=case(
+                failures>=8,50,
+                failures>=5,35,
+                failures>=3,20,
+                true(),0
+              )
+            | eval risk_score=risk_score+
+              if(failures>=3 AND successes>0,25,0)
+            | eval severity=case(
+                risk_score>=70,"Critical",
+                risk_score>=50,"High",
+                risk_score>=25,"Medium",
+                true(),"Low"
+              )
+            | table src_ip failures successes risk_score severity
+            | sort -risk_score
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>False Positive Classification</title>
+      <chart>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth"
+            | lookup benign_ips src_ip OUTPUT reason expires
+            | eval expiry_epoch=strptime(expires,"%Y-%m-%d")
+            | eval classification=if(
+                isnotnull(reason) AND expiry_epoch>=now(),
+                "Known Benign",
+                "Requires Investigation"
+              )
+            | stats count BY classification
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>Authentication Activity Trend</title>
+      <chart>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth"
+            | timechart span=1m count BY result
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">line</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Top Failed Login Source IPs</title>
+      <chart>
+        <search>
+          <query>
+            index=alert_iq sourcetype="alertiq:auth" result="failure"
+            | stats count AS failures BY src_ip
+            | sort -failures
+            | head 10
+          </query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+      </chart>
+    </panel>
+  </row>
+</form>
