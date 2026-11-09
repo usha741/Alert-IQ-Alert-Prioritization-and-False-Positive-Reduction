@@ -1,6 +1,6 @@
 **Alert IQ – False Positive Reduction**
 
-Project Overview
+Project Overview.
 
 Alert IQ is a Splunk-based Security Operations Center (SOC) project designed to prioritize security alerts and reduce known false-positive noise using rule-based filtering and risk scoring.
 
