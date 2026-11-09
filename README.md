@@ -1,4 +1,4 @@
-**Alert IQ – Intelligent SOC Alert Prioritization and False Positive Reduction**
+**Alert IQ – False Positive Reduction**
 
 Project Overview
 
